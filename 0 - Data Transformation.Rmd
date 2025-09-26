@@ -1,0 +1,36 @@
+---
+title: "0 - Data Transformation"
+author: "Andika"
+date: "2025-09-26"
+output: html_document
+---
+
+## Data Transformation
+
+
+```{r Loading Data, include=FALSE}
+library(readxl)
+df <- read_excel("C:/Users/wzj545/University of Copenhagen/KU/Research/WP4/Online Survey.xlsx")
+```
+
+## Speedy Removal Panelist
+Removing panelist who finished the questionnaire under 2 minutes.
+
+From the initial 214 
+
+```{r pressure, echo=FALSE}
+library(dplyr)
+
+
+df2 <- df %>%
+  mutate(
+    start = as.POSIXct(Importance_of_coffee_variables_Prices_Time_Stamp * 86400, origin = "1899-12-30", tz = "Europe/Copenhagen"),
+    end   = as.POSIXct(BMI_Height_Time_Stamp   * 86400, origin = "1899-12-30", tz = "Europe/Copenhagen"),
+    time_taken_sec = as.numeric(difftime(end, start, units = "secs"))
+  ) %>%
+  filter(time_taken_sec > 2 * 60)
+
+```
+
+## Stright line pattern removal
+
