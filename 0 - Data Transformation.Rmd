@@ -5,32 +5,165 @@ date: "2025-09-26"
 output: html_document
 ---
 
+## Loading all library
+
+```{r, echo=TRUE, results='hide', warning=FALSE, message=FALSE}
+library(readxl)
+library(dplyr)
+library(tidyr)
+```
+
 ## Data Transformation
 
-
-```{r Loading Data, include=FALSE}
-library(readxl)
+```{r Loading Data, echo=TRUE, results='hide', warning=FALSE, message=FALSE}
 df <- read_excel("C:/Users/wzj545/University of Copenhagen/KU/Research/WP4/Online Survey.xlsx")
 ```
 
 ## Speedy Removal Panelist
-Removing panelist who finished the questionnaire under 2 minutes.
 
-From the initial 214 
+Removing panelist who finished the questionnaire under 3 minutes.
 
-```{r pressure, echo=FALSE}
-library(dplyr)
+From the initial 214 respondents to 202 respondents.
+
+```{r pressure, warning=FALSE, message=FALSE}
 
 
 df2 <- df %>%
   mutate(
-    start = as.POSIXct(Importance_of_coffee_variables_Prices_Time_Stamp * 86400, origin = "1899-12-30", tz = "Europe/Copenhagen"),
-    end   = as.POSIXct(BMI_Height_Time_Stamp   * 86400, origin = "1899-12-30", tz = "Europe/Copenhagen"),
+    start = as.POSIXct(`Importance_of_coffee_variables_Sustainability_label_(e_g_organic__FairTrade__etc_)_Time_Stamp` * 86400, origin = "1899-12-30", tz = "Europe/Copenhagen"),
+    end   = as.POSIXct(BMI_Weight_Time_Stamp   * 86400, origin = "1899-12-30", tz = "Europe/Copenhagen"),
     time_taken_sec = as.numeric(difftime(end, start, units = "secs"))
   ) %>%
-  filter(time_taken_sec > 2 * 60)
+  filter(time_taken_sec > 3 * 60)
 
 ```
 
-## Stright line pattern removal
+## Straight line pattern removal
 
+Checking respondents who always pick the same number across all scale questions (Attitudinal questions), e.g always 1, 2, etc.
+
+No respondents were eliminated.
+
+```{r}
+scale_vars <- c(names(df2)[2:16], names(df2)[98:102], names(df2)[104:110], names(df2)[112:117], names(df2)[119:126])
+
+df2 <- df2 %>%
+  rowwise() %>%
+  mutate(all_same_all = n_distinct(c_across(all_of(scale_vars)), na.rm = TRUE) == 1) %>%
+  ungroup() %>%
+  filter(!all_same_all)
+```
+
+## Tidying DCE Data
+
+```{r}
+choice_and_time <- df2 %>% 
+  select(1,18:97)
+```
+
+The dataset was divided into two parts: *choice_compact* and *time_compact*.  We screened *choice_compact* for straight-line patterns and examined *time_compact* to assess completion times.
+
+```{r}
+choice_compact <- choice_and_time %>%
+  pivot_longer(cols = matches("^P[1-4]C[1-9]$"),
+               names_to = c("profile","choice_no"),
+               names_pattern = "^P(\\d+)C(\\d+)$",
+               values_to = "ans") %>%
+  mutate(profile = paste0("P", profile),
+         choice_no = as.integer(choice_no)) %>%
+  select(id, profile, choice_no, ans) %>%
+  arrange(id, profile, choice_no) %>%
+  pivot_wider(names_from = choice_no, values_from = ans, names_prefix = "choice_") %>%
+  select(id, profile, starts_with("choice_")) %>% 
+  filter(if_any(starts_with("choice_"), ~ !is.na(.)))
+
+choice_compact <- choice_compact %>%
+  rowwise() %>%
+  mutate(
+    n_ans   = sum(!is.na(c_across(starts_with("choice_")))),
+    n_dist  = n_distinct(c_across(starts_with("choice_")), na.rm = TRUE),
+    sl_row  = n_ans > 0 & n_dist == 1
+  ) %>%
+  ungroup() %>%
+  filter(!sl_row)
+
+check_consistency <- choice_and_time %>%
+  select(id, P1C4, P2C4, P3C4, P4C4, P1Test, P2Test, P3Test, P4Test)
+
+consistency_flags <- check_consistency %>%
+  mutate(
+    P1_match = P1C4 == P1Test,
+    P2_match = P2C4 == P2Test,
+    P3_match = P3C4 == P3Test,
+    P4_match = P4C4 == P4Test,
+    total_matches = rowSums(across(starts_with("P") & ends_with("match")), na.rm = TRUE)
+  )
+
+summary_consistency <- consistency_flags %>%
+  summarise(
+    P1_agreement = mean(P1_match, na.rm = TRUE),
+    P2_agreement = mean(P2_match, na.rm = TRUE),
+    P3_agreement = mean(P3_match, na.rm = TRUE),
+    P4_agreement = mean(P4_match, na.rm = TRUE),
+    overall_agreement = mean(c(P1_match, P2_match, P3_match, P4_match), na.rm = TRUE)
+  )
+
+print(summary_consistency)
+```
+
+```{r}
+time_compact <- choice_and_time %>%
+  pivot_longer(cols = matches("^P[1-4]C[1-9]T$"),
+               names_to = c("profile","time_no"),
+               names_pattern = "^P(\\d+)C(\\d+)T$",
+               values_to = "time") %>%
+  mutate(profile = paste0("P", profile),
+         time_no = as.integer(time_no)) %>%
+  select(id, profile, time_no, time) %>%
+  arrange(id, profile, time_no) %>%
+  pivot_wider(names_from = time_no, values_from = time, names_prefix = "time_") %>%
+  select(id, profile, starts_with("time_")) %>% 
+  filter(if_any(starts_with("time_"), ~ !is.na(.)))
+
+time_posix <- time_compact %>%
+  mutate(across(starts_with("time_"),
+                ~ as.POSIXct(.x * 86400, origin = "1899-12-30", tz = "Europe/Copenhagen")))
+
+time_with_comp <- time_posix %>%
+  rowwise() %>%
+  mutate(
+    n_times = sum(!is.na(c_across(starts_with("time_")))),
+    t_min   = if (n_times > 0) min(c_across(starts_with("time_")), na.rm = TRUE) else as.POSIXct(NA),
+    t_max   = if (n_times > 0) max(c_across(starts_with("time_")), na.rm = TRUE) else as.POSIXct(NA),
+    completion_sec = if (n_times >= 2) as.numeric(difftime(t_max, t_min, units = "secs")) else NA_real_
+  ) %>%
+  ungroup()
+
+threshold_sec <- 20 
+time_flagged <- time_with_comp %>%
+  mutate(speedy = !is.na(completion_sec) & completion_sec < threshold_sec)
+
+time_nospeed <- time_flagged %>%
+  filter(!( !is.na(completion_sec) & completion_sec < threshold_sec ))
+
+overall_summary <- time_with_comp %>%
+  summarise(
+    n_rows            = n(),
+    mean_sec          = mean(completion_sec, na.rm = TRUE),
+    median_sec        = median(completion_sec, na.rm = TRUE),
+    p25_sec           = quantile(completion_sec, 0.25, na.rm = TRUE),
+    p75_sec           = quantile(completion_sec, 0.75, na.rm = TRUE)
+  )
+
+print(overall_summary)
+```
+```{r}
+merged <- left_join(time_with_comp,consistency_flags, by = "id")
+
+merged <- merged %>% select(-c(3:14, 16:27))
+
+```
+1.  Merge DCE data into 10 columns only (separate the choice set, add column "profile" and the time stamp)
+2.  Mutate min and max of the time stamp, then see the time they used to answer DCE
+3.  Observe the straight line
+4.  Transform the DCE data with 3: alt1_20000, alt1_25000 etc until alt3_organic and make it into dummy variable.
