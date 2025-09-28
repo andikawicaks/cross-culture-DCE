@@ -61,9 +61,11 @@ choice_and_time <- df2 %>%
   select(1,18:97)
 ```
 
-The dataset was divided into two parts: *choice_compact* and *time_compact*.  We screened *choice_compact* for straight-line patterns and examined *time_compact* to assess completion times.
+The dataset was divided into two parts: *choice_compact* and *time_compact*. We screened *choice_compact* for straight-line patterns and examined *time_compact* to assess completion times.
 
-```{r}
+In our questionnaire, we employed validity check by using test-retest question for the forth choice set and repeated in the last choice set. In average, the overall agreement of our respondents were 81.2%, meaning that only 164 respondents consistently answered the same questions. However, we decided not to remove every respondents from our dataset and we only removed respondents who answered all 10 questions in less than 30 seconds and did not match with the test-retest validity question. We chose their first choice set as their "true" answer.
+
+```{r echo=TRUE}
 choice_compact <- choice_and_time %>%
   pivot_longer(cols = matches("^P[1-4]C[1-9]$"),
                names_to = c("profile","choice_no"),
@@ -111,7 +113,8 @@ summary_consistency <- consistency_flags %>%
 print(summary_consistency)
 ```
 
-```{r}
+
+```{r echo=TRUE}
 time_compact <- choice_and_time %>%
   pivot_longer(cols = matches("^P[1-4]C[1-9]T$"),
                names_to = c("profile","time_no"),
@@ -152,18 +155,34 @@ overall_summary <- time_with_comp %>%
     mean_sec          = mean(completion_sec, na.rm = TRUE),
     median_sec        = median(completion_sec, na.rm = TRUE),
     p25_sec           = quantile(completion_sec, 0.25, na.rm = TRUE),
-    p75_sec           = quantile(completion_sec, 0.75, na.rm = TRUE)
+    p75_sec           = quantile(completion_sec, 0.75, na.rm = TRUE),
+    min               = min(completion_sec, na.rm = TRUE)
   )
 
 print(overall_summary)
 ```
+
+Compating the completion time (in sec) for discrete choice questions with the validity test. 0 indicates that both answers do not match.
+
 ```{r}
 merged <- left_join(time_with_comp,consistency_flags, by = "id")
 
-merged <- merged %>% select(-c(3:14, 16:27))
+merged <- merged %>% select(-c(3:14, 16:27)) %>%
+  arrange(completion_sec) %>% 
+  filter(total_matches == 0)
 
+head(merged, 5)
 ```
-1.  Merge DCE data into 10 columns only (separate the choice set, add column "profile" and the time stamp)
-2.  Mutate min and max of the time stamp, then see the time they used to answer DCE
-3.  Observe the straight line
-4.  Transform the DCE data with 3: alt1_20000, alt1_25000 etc until alt3_organic and make it into dummy variable.
+Filter respondents number 632 and 626. NOTE FOR MYSELF: Check 632 and 626 if they are in the sensory test.
+
+```{r}
+df2 <- df2 %>% 
+  filter(!id %in% c(632, 626))
+```
+
+## Transforming dataset for DCE analysis for Apollo library
+
+Transform the DCE data with 3: alt1_20000, alt1_25000 etc until alt3_organic and make it into dummy variable.
+
+```{r}
+```
