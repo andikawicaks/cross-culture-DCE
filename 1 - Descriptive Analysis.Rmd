@@ -21,6 +21,94 @@ library(kableExtra)
 df <- read_csv("df2.csv")
 ```
 
-# Summary of Da
+# Summarizing Data
 
+```{r Summarizing Data}
+cont_summary <- df %>%
+  summarise(
+    Age_Mean_SD = paste0(round(mean(Age_Age, na.rm = TRUE), 1), " (", round(sd(Age_Age, na.rm = TRUE), 1), ")"),
+    Age_Median_IQR = paste0(round(median(Age_Age, na.rm = TRUE), 1), " (", 
+                            round(IQR(Age_Age, na.rm = TRUE), 1), ")")
+  ) %>%
+  pivot_longer(everything(), names_to = "Variable", values_to = "Summary")
 
+# Summarise categorical variables
+cat_vars <- c("Gender", "Residence_in_Denmark", "Level_of_urbanisation", "Level_of_Education", "Location_of_Residence", "Household_Income", "Coffee_frequency", "BMI", "Sustainable_label_-_Organic_DK", "Sustainable_label_-_EU", "Sustainability_label_-_etc")
+
+cat_summary <- lapply(cat_vars, function(var) {
+  df %>%
+    group_by(across(all_of(var))) %>%
+    summarise(n = n(), .groups = 'drop') %>%
+    mutate(
+      perc = round(100 * n / sum(n), 1),
+      Variable = var,
+      Category = as.character(!!sym(var)),
+      Summary = paste0(n, " (", perc, "%)")
+    ) %>%
+    select(Variable, Category, Summary)
+}) %>%
+  bind_rows()
+
+descriptive_table <- bind_rows(
+  cont_summary %>% mutate(Category = NA),
+  cat_summary
+)
+```
+
+```{r}
+# Pick your CATA columns
+cata_cols <- names(df)[130:135]  
+
+cata_long <- df %>%
+  pivot_longer(all_of(cata_cols), names_to = "Attribute", values_to = "val") %>%
+  mutate(val = suppressWarnings(as.numeric(val)),
+         selected = val > 0)
+
+cata_summary <- cata_long %>%
+  group_by(Attribute) %>%
+  summarise(
+    Frequency  = sum(selected, na.rm = TRUE),
+    Percentage = mean(selected, na.rm = TRUE) * 100
+  ) %>%
+  arrange(desc(Percentage))
+
+cata_summary
+```
+
+```{r}
+# Pick your CATA columns
+cata_cols <- names(df)[164:171]
+
+cata_long <- df %>%
+  pivot_longer(all_of(cata_cols), names_to = "Attribute", values_to = "val") %>%
+  mutate(val = suppressWarnings(as.numeric(val)),
+         selected = val > 0)
+
+cata_summary <- cata_long %>%
+  group_by(Attribute) %>%
+  summarise(
+    Frequency  = sum(selected, na.rm = TRUE),
+    Percentage = mean(selected, na.rm = TRUE) * 100
+  ) %>%
+  arrange(desc(Percentage))
+
+cata_summary
+```
+
+## Table Output
+
+```{r Table Output}
+descriptive_table %>%
+  kable(
+    format = "html", 
+    caption = "Descriptive Analysis of Socio-Demographic Characteristics",
+    col.names = c("Variable", "Category", "Summary")
+  ) %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+## Export data
+
+```{r Export data}
+write_csv(descriptive_table,"descriptive.csv")
+```
