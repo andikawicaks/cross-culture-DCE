@@ -1,0 +1,26 @@
+---
+title: "1 - Descriptive Analysis"
+author: "Andika"
+date: "2025-10-08"
+output: html_document
+---
+
+## Loading libraries
+
+```{r, echo=TRUE, results='hide', warning=FALSE, message=FALSE}
+library(readr)
+library(dplyr)
+library(tidyr)
+library(knitr)
+library(kableExtra)
+```
+
+## Loading Data Set
+
+```{r Loading Data, echo=TRUE, results='hide', warning=FALSE, message=FALSE}
+df <- read_csv("df2.csv")
+```
+
+# Summary of Da
+
+
