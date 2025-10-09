@@ -1,0 +1,255 @@
+---
+title: "0 - Data Transformation Actual Choice"
+author: "Andika"
+date: "2025-10-09"
+output: html_document
+---
+
+## Loading all library
+
+```{r, echo=TRUE, results='hide', warning=FALSE, message=FALSE}
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(readr)
+```
+
+## Loading Data
+
+```{r Loading Data, echo=TRUE, results='hide', warning=FALSE, message=FALSE}
+df <- read_excel("C:/Users/wzj545/University of Copenhagen/KU/Research/WP4/Actual Choice Data.xlsx")
+```
+
+## Transforming Data for Apollo library
+
+``` {r}
+profile_1 <- df[,c(1:17, 34:49)]
+profile_1 <- na.omit(profile_1)
+
+profile_2 <- df[,c(1, 18:33, 50:65)]
+profile_2 <- na.omit(profile_2)
+
+## Defining function for reshaping data
+reshape_df <- function(df) {
+  
+  # Remove suffixes (e.g., ".1", ".2") from column names
+  colnames(df) <- str_replace(colnames(df), "\\...\\d+$", "")
+  
+  # Identify relevant columns based on naming pattern (e.g., "AWH", "RWN")
+  value_columns <- colnames(df)[str_detect(colnames(df), "^[AR][WHN][WFO]$")]
+  
+  # Convert from wide to long format
+  df_long <- df %>%
+    pivot_longer(cols = all_of(value_columns),
+                 names_to = "original_column",
+                 values_to = "value")
+  
+  # Mapping rules
+  mapping_type <- c("A" = "arabica", "R" = "robusta")
+  mapping_sugar <- c("W" = "without", "H" = "half", "N" = "normal")
+  mapping_label <- c("W" = "without", "F" = "fairtrade", "O" = "organic")
+  
+  # Function to extract information from column names
+  extract_info <- function(col_name) {
+    type <- mapping_type[str_sub(col_name, 1, 1)]
+    sugar <- mapping_sugar[str_sub(col_name, 2, 2)]
+    label <- mapping_label[str_sub(col_name, 3, 3)]
+    return(c(type, sugar, label))
+  }
+  
+  # Apply function to create new columns
+  df_long <- df_long %>%
+    mutate(type = sapply(original_column, function(x) extract_info(x)[1]),
+           sugar = sapply(original_column, function(x) extract_info(x)[2]),
+           label = sapply(original_column, function(x) extract_info(x)[3])) %>%
+    select(-original_column)  # Drop the original column name
+  
+  return(df_long)
+}
+
+df1_long <-reshape_df(profile_1)
+
+df1_long <- df1_long %>%
+  group_by(id) %>%
+  arrange(id) %>%  # if you have another ordering variable, add it here
+  mutate(row_id = row_number()) %>%
+  ungroup()
+
+df1_long <- df1_long %>%
+  group_by(id) %>%
+  mutate(
+    block = ceiling(row_id / 3),
+    pos   = row_id - (block - 1) * 3  # gives 1,2,3 within each block
+  ) %>%
+  ungroup()
+
+df1_long <- df1_long %>% 
+  filter(block <= 8)
+
+df1_long <- df1_long %>%
+  mutate(
+    across(c(2, 6), ~ case_when(
+      . == "RHO" ~ 1,
+      . == "AWW" ~ 2,
+      . == "RHW" ~ 3,
+      TRUE ~ as.numeric(.)
+    )),
+    across(c(3, 7), ~ case_when(
+      . == "RHF" ~ 1,
+      . == "RNO" ~ 2,
+      . == "RNW" ~ 3,
+      TRUE ~ as.numeric(.)
+    )),
+    across(c(4, 8), ~ case_when(
+      . == "AWF" ~ 1,
+      . == "AHO" ~ 2,
+      . == "RNW" ~ 3,
+      TRUE ~ as.numeric(.)
+    )),
+    across(c(5, 9), ~ case_when(
+      . == "AWO" ~ 1,
+      . == "AWW" ~ 2,
+      . == "AHF" ~ 3,
+      TRUE ~ as.numeric(.)
+    ))
+  )
+
+df1_final <- df1_long %>%
+  pivot_wider(
+    id_cols = c(id, block),
+    names_from = pos,
+    values_from = c(value, type, sugar, label),
+    names_glue = "alt{pos}_{.value}"
+  ) %>%
+  arrange(id, block)
+
+# Divided by 3
+df1_long <- df1_long %>%
+  group_by(id) %>%
+  filter(row_number() <= ceiling(n() / 3)) %>%
+  ungroup()
+
+df1_choices <- df1_long %>%
+  filter(row_id %in% 1:8) %>%
+     mutate(choice = case_when(
+       row_id == 1 ~ as.character(Exp_1_1_Choice),
+         row_id == 2 ~ as.character(Exp_1_2_Choice),
+         row_id == 3 ~ as.character(Exp_1_3_Choice),
+         row_id == 4 ~ as.character(Exp_1_4_Choice),
+         row_id == 5 ~ as.character(Act_1_1),
+         row_id == 6 ~ as.character(Act_1_2),
+         row_id == 7 ~ as.character(Act_1_3),
+         row_id == 8 ~ as.character(Act_1_4)
+       )) %>%
+     select(id, row_id, choice)
+
+df1_binding <- cbind(df1_final, df1_choices["choice"])
+
+###
+
+df2_long <-reshape_df(profile_2)
+
+df2_long <- df2_long %>%
+  group_by(id) %>%
+  arrange(id) %>%  # if you have another ordering variable, add it here
+  mutate(row_id = row_number()) %>%
+  ungroup()
+
+df2_long <- df2_long %>%
+  group_by(id) %>%
+  mutate(
+    block = ceiling(row_id / 3),
+    pos   = row_id - (block - 1) * 3  # gives 1,2,3 within each block
+  ) %>%
+  ungroup()
+
+df2_long <- df2_long %>% 
+  filter(block <= 8)
+
+df2_long <- df2_long %>%
+  mutate(
+    across(c(2, 6), ~ case_when(
+      . == "AHW" ~ 1,
+      . == "RWW" ~ 2,
+      . == "ANO" ~ 3,
+      TRUE ~ as.numeric(.)
+    )),
+    across(c(3, 7), ~ case_when(
+      . == "RHO" ~ 1,
+      . == "ANF" ~ 2,
+      . == "RWO" ~ 3,
+      TRUE ~ as.numeric(.)
+    )),
+    across(c(4, 8), ~ case_when(
+      . == "AHO" ~ 1,
+      . == "ANW" ~ 2,
+      . == "RNF" ~ 3,
+      TRUE ~ as.numeric(.)
+    )),
+    across(c(5, 9), ~ case_when(
+      . == "RHF" ~ 1,
+      . == "RWF" ~ 2,
+      . == "RWO" ~ 3,
+      TRUE ~ as.numeric(.)
+    ))
+  )
+
+df2_final <- df2_long %>%
+  pivot_wider(
+    id_cols = c(id, block),
+    names_from = pos,
+    values_from = c(value, type, sugar, label),
+    names_glue = "alt{pos}_{.value}"
+  ) %>%
+  arrange(id, block)
+
+# Divided by 3
+df2_long <- df2_long %>%
+  group_by(id) %>%
+  filter(row_number() <= ceiling(n() / 3)) %>%
+  ungroup()
+
+df2_choices <- df2_long %>%
+  filter(row_id %in% 1:8) %>%
+     mutate(choice = case_when(
+       row_id == 1 ~ as.character(Exp_2_1_Choice),
+         row_id == 2 ~ as.character(Exp_2_2_Choice),
+         row_id == 3 ~ as.character(Exp_2_3_Choice),
+         row_id == 4 ~ as.character(Exp_2_4_Choice),
+         row_id == 5 ~ as.character(Act_2_1),
+         row_id == 6 ~ as.character(Act_2_2),
+         row_id == 7 ~ as.character(Act_2_3),
+         row_id == 8 ~ as.character(Act_2_4)
+       )) %>%
+     select(id, row_id, choice)
+
+df2_binding <- cbind(df2_final, df2_choices["choice"])
+
+merged <- rbind(df1_binding, df2_binding)
+``` 
+
+## Merging sociodemographic data into the actual choice data for DCE analysis
+
+```{r}
+cleandemo <- read.csv("input_MNL.csv")
+cleandemo <- select(cleandemo, -c(2:37, 46:86))
+
+# 2) Add block (1..n within each id) and keep 1..8
+cleandemo8 <- cleandemo %>%
+  group_by(id) %>%
+  arrange(id) %>%
+  mutate(block = row_number()) %>%
+  filter(block <= 8) %>%
+  ungroup()
+
+# 3) Join the extra columns onto input_Apollo_actual
+input_Apollo_actual <- merged %>%
+  left_join(cleandemo8, by = c("id", "block"))
+```
+
+## Export Data
+
+```{r}
+write_csv(input_Apollo_actual,"input_Apollo_actual.csv")
+```
