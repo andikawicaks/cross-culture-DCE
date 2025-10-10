@@ -1,0 +1,222 @@
+---
+title: "1 - Descriptive Analysis Actual Choice"
+author: "Andika"
+date: "2025-10-09"
+output: html_document
+---
+## Loading libraries
+
+```{r, echo=TRUE, results='hide', warning=FALSE, message=FALSE}
+library(readr)
+library(dplyr)
+library(tidyr)
+library(knitr)
+library(kableExtra)
+library(readxl)
+```
+
+## Loading Data Set
+
+```{r Loading Data, echo=TRUE, results='hide', warning=FALSE, message=FALSE}
+df <- read_csv("df2.csv")
+df_acr <- read_csv("input_Apollo_actual.csv")
+```
+
+626 is removed from sensory evaluation due to speedy removal post hoc.
+
+```{r}
+df_filtered <- df %>%
+  semi_join(df_acr, by = "id")
+```
+# Summarizing Data
+
+```{r Summarizing Data}
+cont_summary <- df_filtered %>%
+  summarise(
+    Age_Mean_SD = paste0(round(mean(Age_Age, na.rm = TRUE), 1), " (", round(sd(Age_Age, na.rm = TRUE), 1), ")"),
+    Age_Median_IQR = paste0(round(median(Age_Age, na.rm = TRUE), 1), " (", 
+                            round(IQR(Age_Age, na.rm = TRUE), 1), ")")
+  ) %>%
+  pivot_longer(everything(), names_to = "Variable", values_to = "Summary")
+
+# Summarise categorical variables
+cat_vars <- c("Gender", "Residence_in_Denmark", "Level_of_urbanisation", "Level_of_Education", "Location_of_Residence", "Household_Income", "Coffee_frequency", "BMI", "Sustainable_label_-_Organic_DK", "Sustainable_label_-_EU", "Sustainability_label_-_etc")
+
+cat_summary <- lapply(cat_vars, function(var) {
+  df_filtered %>%
+    group_by(across(all_of(var))) %>%
+    summarise(n = n(), .groups = 'drop') %>%
+    mutate(
+      perc = round(100 * n / sum(n), 1),
+      Variable = var,
+      Category = as.character(!!sym(var)),
+      Summary = paste0(n, " (", perc, "%)")
+    ) %>%
+    select(Variable, Category, Summary)
+}) %>%
+  bind_rows()
+
+descriptive_table <- bind_rows(
+  cont_summary %>% mutate(Category = NA),
+  cat_summary
+)
+```
+
+```{r}
+# Pick your CATA columns
+cata_cols <- names(df_filtered)[130:135]  
+
+cata_long <- df_filtered %>%
+  pivot_longer(all_of(cata_cols), names_to = "Attribute", values_to = "val") %>%
+  mutate(val = suppressWarnings(as.numeric(val)),
+         selected = val > 0)
+
+cata_summary <- cata_long %>%
+  group_by(Attribute) %>%
+  summarise(
+    Frequency  = sum(selected, na.rm = TRUE),
+    Percentage = mean(selected, na.rm = TRUE) * 100
+  ) %>%
+  arrange(desc(Percentage))
+
+cata_summary
+```
+
+
+```{r}
+# Pick your CATA columns
+cata_cols <- names(df_filtered)[164:171]
+
+cata_long <- df_filtered %>%
+  pivot_longer(all_of(cata_cols), names_to = "Attribute", values_to = "val") %>%
+  mutate(val = suppressWarnings(as.numeric(val)),
+         selected = val > 0)
+
+cata_summary <- cata_long %>%
+  group_by(Attribute) %>%
+  summarise(
+    Frequency  = sum(selected, na.rm = TRUE),
+    Percentage = mean(selected, na.rm = TRUE) * 100
+  ) %>%
+  arrange(desc(Percentage))
+
+cata_summary
+```
+
+## Table Output
+
+```{r Table Output}
+descriptive_table %>%
+  kable(
+    format = "html", 
+    caption = "Descriptive Analysis of Socio-Demographic Characteristics",
+    col.names = c("Variable", "Category", "Summary")
+  ) %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+## Export data
+
+```{r Export data}
+write_csv(descriptive_table,"descriptive.csv")
+```
+
+## Loading from Indonesian data
+
+``` {r Loading Data 2, echo=TRUE, results='hide', warning=FALSE, message=FALSE}
+demo_id <- read_excel("C:/Users/wzj545/University of Copenhagen/KU/Research/WP3/Sensory R/Sensory Coffee Indonesia/Demographic.xlsx")
+
+choice_id <- read_excel("C:/Users/wzj545/University of Copenhagen/KU/Research/WP3/Sensory R/Sensory Coffee Indonesia/consumer_data_id.xlsx")
+
+df_filtered_id <- demo_id %>%
+  semi_join(choice_id, by = c("ID" = "Panelist_Code"))
+
+```
+
+# Summarizing Data
+
+```{r Summarizing Data 2}
+df_filtered_id$BMI <- cut(df_filtered_id$BMI,
+                breaks = c(-Inf, 18.5, 25, 30, 35, Inf),
+                labels = c("Underweight", "Normal", "Overweight","Obese","Extremely Obese"),
+                right = FALSE)
+
+cont_summary <- df_filtered_id %>%
+  summarise(
+    Age_Mean_SD = paste0(round(mean(age, na.rm = TRUE), 1), " (", round(sd(age, na.rm = TRUE), 1), ")"),
+    Age_Median_IQR = paste0(round(median(age, na.rm = TRUE), 1), " (", 
+                            round(IQR(age, na.rm = TRUE), 1), ")")
+  ) %>%
+  pivot_longer(everything(), names_to = "Variable", values_to = "Summary")
+
+# Summarise categorical variables
+cat_vars <- c("gender", "urbanization", "education", "income", "frequency", "BMI", "Q24__Sustainable_label_-_Organik_Indo", "Q25__Sustainable_label_-_EU", "Q26__Sustainability_label_-_etc")
+
+cat_summary <- lapply(cat_vars, function(var) {
+  df_filtered_id %>%
+    group_by(across(all_of(var))) %>%
+    summarise(n = n(), .groups = 'drop') %>%
+    mutate(
+      perc = round(100 * n / sum(n), 1),
+      Variable = var,
+      Category = as.character(!!sym(var)),
+      Summary = paste0(n, " (", perc, "%)")
+    ) %>%
+    select(Variable, Category, Summary)
+}) %>%
+  bind_rows()
+
+descriptive_table <- bind_rows(
+  cont_summary %>% mutate(Category = NA),
+  cat_summary
+)
+```
+
+```{r}
+# Pick your CATA columns
+cata_cols <- names(df_filtered_id)[13:20]  
+
+cata_long <- df_filtered_id %>%
+  pivot_longer(all_of(cata_cols), names_to = "Attribute", values_to = "val") %>%
+  mutate(val = suppressWarnings(as.numeric(val)),
+         selected = val > 0)
+
+cata_summary <- cata_long %>%
+  group_by(Attribute) %>%
+  summarise(
+    Frequency  = sum(selected, na.rm = TRUE),
+    Percentage = mean(selected, na.rm = TRUE) * 100
+  ) %>%
+  arrange(desc(Percentage))
+
+cata_summary
+```
+```{r}
+# Pick your CATA columns
+cata_cols <- names(df_filtered_id)[60:67]  
+
+cata_long <- df_filtered_id %>%
+  pivot_longer(all_of(cata_cols), names_to = "Attribute", values_to = "val") %>%
+  mutate(val = suppressWarnings(as.numeric(val)),
+         selected = val > 0)
+
+cata_summary <- cata_long %>%
+  group_by(Attribute) %>%
+  summarise(
+    Frequency  = sum(selected, na.rm = TRUE),
+    Percentage = mean(selected, na.rm = TRUE) * 100
+  ) %>%
+  arrange(desc(Percentage))
+
+cata_summary
+```
+
+``` {r}
+descriptive_table %>%
+  kable(
+    format = "html", 
+    caption = "Descriptive Analysis of Socio-Demographic Characteristics",
+    col.names = c("Variable", "Category", "Summary")
+  ) %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed"))
+```

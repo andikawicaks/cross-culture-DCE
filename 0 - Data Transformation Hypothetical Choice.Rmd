@@ -175,7 +175,7 @@ merged <- merged %>% select(-c(3:14, 16:27)) %>%
 head(merged, 5)
 ```
 
-Filter respondents number 632 and 626. NOTE FOR MYSELF: Check 632 and 626 if they are in the sensory test.
+Filter respondents number 632 and 626, although respondent 626 was in the sensory test.
 
 ```{r}
 df2 <- df2 %>% 

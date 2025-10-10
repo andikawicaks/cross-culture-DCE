@@ -227,6 +227,19 @@ df2_choices <- df2_long %>%
 df2_binding <- cbind(df2_final, df2_choices["choice"])
 
 merged <- rbind(df1_binding, df2_binding)
+
+merged <- merged %>%
+  group_by(id) %>%
+  arrange(id, block) %>%
+  mutate(
+    # Create group of 4 rows (1, 2, 3, 4, 1, 2, 3, 4, ...)
+    group4 = ceiling(row_number() / 4),
+    # Alternate: odd groups -> SP=1 RP=0, even groups -> SP=0 RP=1
+    SP = if_else(group4 %% 2 == 1, 1, 0),
+    RP = if_else(group4 %% 2 == 1, 0, 1)
+  ) %>%
+  select(id, block, SP, RP, everything()) %>%  # move SP/RP right after block
+  ungroup()
 ``` 
 
 ## Merging sociodemographic data into the actual choice data for DCE analysis
@@ -246,6 +259,46 @@ cleandemo8 <- cleandemo %>%
 # 3) Join the extra columns onto input_Apollo_actual
 input_Apollo_actual <- merged %>%
   left_join(cleandemo8, by = c("id", "block"))
+```
+
+```{r}
+recode_values_profile <- function (x) {
+  recode(x, "robusta" = 1, "arabica" = 2,
+         "without" = 1, "half" = 2, "normal" = 3,
+         "fairtrade" = 2, "organic" = 3)
+}
+
+input_Apollo_actual <- input_Apollo_actual %>%
+  mutate(across(c(8:16), recode_values_profile))
+
+input_Apollo_actual <- input_Apollo_actual %>% 
+  mutate(alt1_robusta = ifelse(alt1_type == 1,1,0)) %>%
+  mutate(alt1_arabica = ifelse(alt1_type == 2,1,0)) %>%
+  mutate(alt1_wo_sugar = ifelse(alt1_sugar == 1,1,0)) %>% 
+  mutate(alt1_half = ifelse(alt1_sugar == 2,1,0)) %>%
+  mutate(alt1_normal = ifelse(alt1_sugar == 3,1,0)) %>% 
+  mutate(alt1_wo_label = ifelse(alt1_label == 1,1,0)) %>% 
+  mutate(alt1_fairtrade = ifelse(alt1_label == 2,1,0)) %>% 
+  mutate(alt1_organic = ifelse(alt1_label == 3,1,0)) %>% 
+  mutate(alt2_robusta = ifelse(alt2_type == 1,1,0)) %>%
+  mutate(alt2_arabica = ifelse(alt2_type == 2,1,0)) %>%
+  mutate(alt2_wo_sugar = ifelse(alt2_sugar == 1,1,0)) %>% 
+  mutate(alt2_half = ifelse(alt2_sugar == 2,1,0)) %>%
+  mutate(alt2_normal = ifelse(alt2_sugar == 3,1,0)) %>% 
+  mutate(alt2_wo_label = ifelse(alt2_label == 1,1,0)) %>% 
+  mutate(alt2_fairtrade = ifelse(alt2_label == 2,1,0)) %>% 
+  mutate(alt2_organic = ifelse(alt2_label == 3,1,0)) %>%
+  mutate(alt3_robusta = ifelse(alt3_type == 1,1,0)) %>%
+  mutate(alt3_arabica = ifelse(alt3_type == 2,1,0)) %>%
+  mutate(alt3_wo_sugar = ifelse(alt3_sugar == 1,1,0)) %>% 
+  mutate(alt3_half = ifelse(alt3_sugar == 2,1,0)) %>%
+  mutate(alt3_normal = ifelse(alt3_sugar == 3,1,0)) %>% 
+  mutate(alt3_wo_label = ifelse(alt3_label == 1,1,0)) %>% 
+  mutate(alt3_fairtrade = ifelse(alt3_label == 2,1,0)) %>% 
+  mutate(alt3_organic = ifelse(alt3_label == 3,1,0))
+  
+input_Apollo_actual <- input_Apollo_actual %>% 
+  select(-c(8:16))
 ```
 
 ## Export Data
