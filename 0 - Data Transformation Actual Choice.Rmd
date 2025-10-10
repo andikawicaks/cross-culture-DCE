@@ -299,6 +299,11 @@ input_Apollo_actual <- input_Apollo_actual %>%
   
 input_Apollo_actual <- input_Apollo_actual %>% 
   select(-c(8:16))
+
+input_Apollo_actual %>%
+  filter(if_any(everything(), is.na))
+
+input_Apollo_actual <- na.omit(input_Apollo_actual) # removing id 626
 ```
 
 ## Export Data
