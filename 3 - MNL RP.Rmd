@@ -1,7 +1,7 @@
 ---
-title: "2 - MNL SP"
+title: "3 - MNL RP"
 author: "Andika"
-date: "2025-10-10"
+date: "2025-10-16"
 output: html_document
 ---
 
@@ -13,7 +13,7 @@ N: 109
 
 choice sets with 3 choice alternatives, no opt-out
 
-Model: Simple MNL SP
+Model: Simple MNL RP
 
 ## LOAD LIBRARY AND DEFINE CORE SETTINGS
 
@@ -37,8 +37,8 @@ apollo_initialise()
 
 ### Set core controls
 apollo_control = list(
-  modelName       = "Simple MNL SP",
-  modelDescr      = "Simple MNL SP",
+  modelName       = "Simple MNL RP",
+  modelDescr      = "Simple MNL RP",
   indivID         = "id", 
   outputDirectory = "output"
 )
@@ -49,8 +49,8 @@ apollo_control = list(
 ```{r Loading Data}
 database <- read.csv("C:/Users/wzj545/University of Copenhagen/KU/Research/WP4/WP3 - Cross culture coffee DCE/cross-culture-DCE/input_Apollo_actual.csv")
 
-### Use only SP data
-database = subset(database,database$SP==1)
+### Use only RP data
+database = subset(database,database$RP==1)
 ```
 
 ## DEFINE MODEL PARAMETERS
@@ -95,8 +95,8 @@ apollo_probabilities=function(apollo_beta, apollo_inputs, functionality="estimat
   V[["choice2"]]  = asc_2 + b_hedonic  * alt2_value + b_arabica * alt2_arabica + b_half * alt2_half + b_normal * alt2_normal + b_fairtrade * alt2_fairtrade + b_organic * alt2_organic 
   V[["choice3"]]  = asc_3 + b_hedonic  * alt3_value + b_arabica * alt3_arabica + b_half * alt3_half + b_normal * alt3_normal + b_fairtrade * alt3_fairtrade + b_organic * alt3_organic
   
-  ### Compute probabilities for the SP part of the data using MNL model
-  mnl_settings_SP = list(
+  ### Compute probabilities for the RP part of the data using MNL model
+  mnl_settings_RP = list(
     alternatives  = c(choice1=1, choice2=2, choice3=3), 
     avail         = list(choice1=1, choice2=1, choice3=1), 
     choiceVar     = choice, 
@@ -104,7 +104,7 @@ apollo_probabilities=function(apollo_beta, apollo_inputs, functionality="estimat
   )
   
   ### Compute probabilities using MNL model
-  P[["model"]] = apollo_mnl(mnl_settings_SP, functionality)
+  P[["model"]] = apollo_mnl(mnl_settings_RP, functionality)
   
   ### Take product across observation for same individual
   P = apollo_panelProd(P, apollo_inputs, functionality)
@@ -127,6 +127,7 @@ model = apollo_estimate(apollo_beta, apollo_fixed, apollo_probabilities, apollo_
 # Formatted output to screen
 apollo_modelOutput(model)
 ```
+
 ```{r}
 output <- apollo_modelOutput(model)
 output <- as.data.frame(output)
@@ -141,10 +142,5 @@ output <- output %>%
              p_value, Robust_p), ~round(., 4))
   )
 
-kable(output, caption = "MNL SP Model Estimates with p-values")
-```
-## FORMATTED OUTPUT
-
-```{r Formatted Output, eval=FALSE, include=TRUE}
-apollo_saveOutput(model)
+kable(output, caption = "MNL RP Model Estimates with p-values")
 ```
