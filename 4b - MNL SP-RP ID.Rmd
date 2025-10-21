@@ -1,19 +1,19 @@
 ---
-title: "4 - MNL SP RP DK"
+title: "MNL SP-RP ID"
 author: "Andika"
-date: "2025-10-16"
+date: "2025-10-21"
 output: html_document
 ---
 
 ## Analysis Information
 
-Data: Danish consumers sensory data with expectation (SP) and actual liking (RP)
+Data: Indonesian consumers sensory data with expectation (SP) and actual liking (RP)
 
-N: 109 
+N: 197 
 
 choice sets with 3 choice alternatives, no opt-out
 
-Model: Joint MNL SP-RP DK
+Model: Joint MNL SP-RP ID
 
 ## LOAD LIBRARY AND DEFINE CORE SETTINGS
 
@@ -37,8 +37,8 @@ apollo_initialise()
 
 ### Set core controls
 apollo_control = list(
-  modelName       = "Joint MNL SP-RP DK",
-  modelDescr      = "Joint MNL SP-RP DK",
+  modelName       = "Joint MNL SP-RP ID",
+  modelDescr      = "Joint MNL SP-RP ID",
   indivID         = "id", 
   outputDirectory = "output"
 )
@@ -47,7 +47,7 @@ apollo_control = list(
 ## LOAD DATA AND APPLY ANY TRANSFORMATIONS
 
 ```{r Loading Data}
-database <- read.csv("C:/Users/wzj545/University of Copenhagen/KU/Research/WP4/WP3 - Cross culture coffee DCE/cross-culture-DCE/input_Apollo_actual.csv")
+database = read.csv("C:/Users/wzj545/University of Copenhagen/KU/Research/WP3/Sensory R/Sensory Coffee Indonesia/input_MNL.csv", header = TRUE)
 ```
 
 ## DEFINE MODEL PARAMETERS
@@ -158,5 +158,5 @@ output <- output %>%
              p_value, Robust_p), ~round(., 4))
   )
 
-kable(output, caption = "MNL SP-RP Model (DK) Estimates with p-values")
+kable(output, caption = "MNL SP-RP Model (ID) Estimates with p-values")
 ```

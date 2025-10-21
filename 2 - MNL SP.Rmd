@@ -60,7 +60,6 @@ database = subset(database,database$SP==1)
 apollo_beta=c(asc_1                 = 0,
               asc_2                 = 0,
               asc_3                 = 0,
-              b_hedonic             = 0, # overall liking
               b_arabica             = 0,
               b_half                = 0,
               b_normal              = 0,
@@ -91,9 +90,9 @@ apollo_probabilities=function(apollo_beta, apollo_inputs, functionality="estimat
   ### List of utilities (before applying scales): these must use the same names as in mnl_settings, order is irrelevant
   V = list()
   
-  V[["choice1"]]  = asc_1 + b_hedonic  * alt1_value + b_arabica * alt1_arabica + b_half * alt1_half + b_normal * alt1_normal + b_fairtrade * alt1_fairtrade + b_organic * alt1_organic   
-  V[["choice2"]]  = asc_2 + b_hedonic  * alt2_value + b_arabica * alt2_arabica + b_half * alt2_half + b_normal * alt2_normal + b_fairtrade * alt2_fairtrade + b_organic * alt2_organic 
-  V[["choice3"]]  = asc_3 + b_hedonic  * alt3_value + b_arabica * alt3_arabica + b_half * alt3_half + b_normal * alt3_normal + b_fairtrade * alt3_fairtrade + b_organic * alt3_organic
+  V[["choice1"]]  = asc_1 + b_arabica * alt1_arabica + b_half * alt1_half + b_normal * alt1_normal + b_fairtrade * alt1_fairtrade + b_organic * alt1_organic   
+  V[["choice2"]]  = asc_2 + b_arabica * alt2_arabica + b_half * alt2_half + b_normal * alt2_normal + b_fairtrade * alt2_fairtrade + b_organic * alt2_organic 
+  V[["choice3"]]  = asc_3 + b_arabica * alt3_arabica + b_half * alt3_half + b_normal * alt3_normal + b_fairtrade * alt3_fairtrade + b_organic * alt3_organic
   
   ### Compute probabilities for the SP part of the data using MNL model
   mnl_settings_SP = list(
