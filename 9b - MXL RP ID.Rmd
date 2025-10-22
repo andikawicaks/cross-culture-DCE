@@ -1,0 +1,184 @@
+---
+title: "MXL RP ID"
+author: "Andika"
+date: "2025-10-21"
+output: html_document
+---
+
+## Analysis Information
+
+Data: Indonesian consumers sensory data with expectation (SP) and actual liking (RP)
+
+N: 197
+
+choice sets with 3 choice alternatives, no opt-out
+
+Model: MXL RP ID
+
+## LOAD LIBRARY AND DEFINE CORE SETTINGS
+
+```{r setup, warning = FALSE, message = FALSE}
+### Clear memory
+rm(list = ls())
+
+### Load Apollo library
+library(apollo)
+library(tidyr)
+library(dplyr)
+library(knitr)
+library(gt)
+
+### Set working directory (only works in RStudio)
+setwd(normalizePath("C:/Users/wzj545/University of Copenhagen/KU/Research/WP4/WP3 - Cross culture coffee DCE/cross-culture-DCE"))
+apollo_setWorkDir()
+
+### Initialise code
+apollo_initialise()
+
+### Set core controls
+apollo_control = list(
+  modelName       = "MXL RP ID, uncorrelated lognormals in preference space",
+  modelDescr      = "MXL RP ID, uncorrelated lognormals in preference space",
+  indivID         = "id",
+  nCores          = 4,
+  outputDirectory = "output"
+)
+```
+
+## LOAD DATA AND APPLY ANY TRANSFORMATIONS
+
+```{r Loading Data}
+database = read.csv("C:/Users/wzj545/University of Copenhagen/KU/Research/WP3/Sensory R/Sensory Coffee Indonesia/input_MNL.csv", header = TRUE)
+
+### Use only RP data
+database = subset(database,database$RP==1)
+```
+
+## DEFINE MODEL PARAMETERS
+
+```{r Defining Model Parameters}
+### Vector of parameters, including any that are kept fixed in estimation
+apollo_beta=c(
+  mu_b_arabica   = 0,
+  mu_b_half      = 0,
+  mu_b_normal    = 0,
+  mu_b_fairtrade = 0,
+  mu_b_organic   = 0,
+
+  # Standard deviations (start small; estimate >0 if heterogeneity exists)
+  sd_b_arabica   = 0.1,
+  sd_b_half      = 0.1,
+  sd_b_normal    = 0.1,
+  sd_b_fairtrade = 0.1,
+  sd_b_organic   = 0.1
+)
+
+### Vector with names (in quotes) of parameters to be kept fixed at their starting value in apollo_beta, use apollo_beta_fixed = c() if none
+apollo_fixed = c()
+```
+
+## DEFINE RANDOM COMPONENTS
+
+```{r Random Components}
+### Set parameters for generating draws
+apollo_draws = list(
+  interDrawsType = "halton",
+  interNDraws    = 1000,
+  interUnifDraws = c(),
+  interNormDraws = c("d_arabica","d_half","d_normal","d_fairtrade","d_organic"),
+  intraDrawsType = "halton",
+  intraNDraws    = 0,
+  intraUnifDraws = c(),
+  intraNormDraws = c()
+)
+
+### Create random parameters
+apollo_randCoeff = function(apollo_beta, apollo_inputs){
+  randcoeff = list()
+
+  randcoeff[["b_arabica"]]   = mu_b_arabica   + sd_b_arabica   * d_arabica
+  randcoeff[["b_half"]]      = mu_b_half      + sd_b_half      * d_half
+  randcoeff[["b_normal"]]    = mu_b_normal    + sd_b_normal    * d_normal
+  randcoeff[["b_fairtrade"]] = mu_b_fairtrade + sd_b_fairtrade * d_fairtrade
+  randcoeff[["b_organic"]]   = mu_b_organic   + sd_b_organic   * d_organic
+
+  return(randcoeff)
+}
+```
+
+```{r Define Model, warning=FALSE, message=FALSE}
+# Group and validate inputs
+apollo_inputs = apollo_validateInputs()
+
+# Define model and likelihood function
+apollo_probabilities=function(apollo_beta, apollo_inputs, functionality="estimate"){
+  
+  ### Function initialisation: do not change the following three commands
+  ### Attach inputs and detach after function exit
+  apollo_attach(apollo_beta, apollo_inputs)
+  on.exit(apollo_detach(apollo_beta, apollo_inputs))
+  
+  ### Create list of probabilities P
+  P = list()
+  
+  ### List of utilities (before applying scales): these must use the same names as in mnl_settings, order is irrelevant
+  V = list()
+  
+  V[["choice1"]]  = b_arabica * alt1_arabica + b_half * alt1_half + b_normal * alt1_normal + b_fairtrade * alt1_fairtrade + b_organic * alt1_organic   
+  V[["choice2"]]  = b_arabica * alt2_arabica + b_half * alt2_half + b_normal * alt2_normal + b_fairtrade * alt2_fairtrade + b_organic * alt2_organic 
+  V[["choice3"]]  = b_arabica * alt3_arabica + b_half * alt3_half + b_normal * alt3_normal + b_fairtrade * alt3_fairtrade + b_organic * alt3_organic
+  
+  ### Compute probabilities for the RP part of the data using MNL model
+  mnl_settings = list(
+    alternatives  = c(choice1=1, choice2=2, choice3=3), 
+    avail         = list(choice1=1, choice2=1, choice3=1),
+    choiceVar     = choice, 
+    utilities     = V
+  )
+  
+  P[["model"]] = apollo_mnl(mnl_settings, functionality)
+  
+  ### Take product across observation for same individual
+  P = apollo_panelProd(P, apollo_inputs, functionality)
+  
+  ### Average across inter-individual draws
+  P = apollo_avgInterDraws(P, apollo_inputs, functionality)
+  
+  ### Prepare and return outputs of function
+  P = apollo_prepareProb(P, apollo_inputs, functionality)
+  return(P)
+}
+```
+
+## MODEL ESTIMATION
+
+```{r Model Estimation}
+model = apollo_estimate(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inputs)
+```
+
+## MODEL OUTPUTS
+
+```{r Model Output screen}
+# Formatted output to screen
+apollo_modelOutput(model)
+```
+
+```{r message=FALSE, warning=FALSE}
+output <- apollo_modelOutput(model)
+output <- as.data.frame(output)
+```
+
+```{r}
+output <- output %>%
+  mutate(
+    p_value = 2 * (1 - pnorm(abs(`t.rat.(0)`))),
+    Robust_p = 2 * (1 - pnorm(abs(`Rob.t.rat.(0)`)))
+  )
+output <- output %>%
+  mutate(
+    across(c(Estimate, s.e., `t.rat.(0)`, `Rob.s.e.`, `Rob.t.rat.(0)`,
+             p_value, Robust_p), ~round(., 4))
+  )
+
+kable(output, caption = "MXL RP Model (ID) Estimates with p-values")
+```
