@@ -1,0 +1,205 @@
+---
+title: "LC 2 classes with covariates ID"
+author: "Andika"
+date: "2025-10-28"
+output: html_document
+---
+
+## Analysis Information
+
+Data: Indonesian consumers sensory data with expectation (SP) and actual liking (RP)
+
+N: 197 
+
+choice sets with 3 choice alternatives, no opt-out
+
+Model: Simple Latent class model for 3 class, with covariates in class allocation model, joint SP-RP
+
+## LOAD LIBRARY AND DEFINE CORE SETTINGS
+
+```{r setup, warning = FALSE, message = FALSE}
+### Clear memory
+rm(list = ls())
+
+### Load Apollo library
+library(apollo)
+library(tidyr)
+library(dplyr)
+library(knitr)
+library(gt)
+
+### Set working directory (only works in RStudio)
+setwd(normalizePath("C:/Users/wzj545/University of Copenhagen/KU/Research/WP4/WP3 - Cross culture coffee DCE/cross-culture-DCE"))
+apollo_setWorkDir()
+
+### Initialise code
+apollo_initialise()
+
+### Set core controls
+apollo_control = list(
+  modelName       = "LC model 2 class, ID",
+  modelDescr      = "LC model 2 class, ID",
+  indivID         = "id", 
+  outputDirectory = "output"
+)
+```
+
+## LOAD DATA AND APPLY ANY TRANSFORMATIONS
+
+```{r Loading Data}
+database = read.csv("C:/Users/wzj545/University of Copenhagen/KU/Research/WP3/Sensory R/Sensory Coffee Indonesia/input_MNL.csv", header = TRUE)
+```
+
+## DEFINE MODEL PARAMETERS
+
+```{r Defining Model Parameters}
+### Vector of parameters, including any that are kept fixed in estimation
+apollo_beta=c(asc_1                 = 0,
+              asc_2                 = 0,
+              asc_3                 = 0,
+              b_arabica_1             = -0.1,
+              b_arabica_2             = 0,
+              b_half_1                = 0.5,
+              b_half_2                = 0,
+              b_normal_1              = 0.1,
+              b_normal_2              = 0,
+              b_fairtrade_1           = 0.05,
+              b_fairtrade_2           = 0,
+              b_organic_1             = 0.1,
+              b_organic_2             = 0,
+              delta_1                 = 0.05,
+              delta_2                 = 0,
+              gamma_gender_a          = 0.1,
+              gamma_gender_b          = 0,
+              gamma_urban_a           = 0.1,
+              gamma_urban_b           = 0,
+              gamma_freq_a            = 0.1,
+              gamma_freq_b            = 0,
+              gamma_edu_a             = 0.1,
+              gamma_edu_b             = 0,
+              gamma_income_a          = 0.1,
+              gamma_income_b          = 0,
+              gamma_age_a             = 0.1,
+              gamma_age_b             = 0,
+              gamma_BMI_a             = 0.1,
+              gamma_BMI_b             = 0
+)
+
+### Vector with names (in quotes) of parameters to be kept fixed at their starting value in apollo_beta, use apollo_beta_fixed = c() if none
+apollo_fixed = c("asc_1","delta_2", "gamma_gender_b", "gamma_urban_b", "gamma_freq_b", "gamma_edu_b", "gamma_income_b", "gamma_age_b", "gamma_BMI_b")
+```
+
+## DEFINE LATENT CLASS COMPONENTS 
+
+```{r Define Latent Class Model, warning=FALSE, message=FALSE}
+apollo_lcPars=function(apollo_beta, apollo_inputs){
+  lcpars = list()
+  lcpars[["beta_arabica"]] = list(b_arabica_1, b_arabica_2)
+  lcpars[["beta_half"]] = list(b_half_1, b_half_2)
+  lcpars[["beta_normal"]] = list(b_normal_1, b_normal_2)
+  lcpars[["beta_fairtrade"]] = list(b_fairtrade_1, b_fairtrade_2)
+  lcpars[["beta_organic"]] = list(b_organic_1, b_organic_2)
+  
+  ### Utilities of class allocation model
+  V=list()
+  V[["class_a"]] = delta_1 + gamma_gender_a * gender + gamma_urban_a * urbanization + gamma_freq_a * frequency + gamma_edu_a * education + gamma_income_a * income + gamma_age_a * age + gamma_BMI_a * BMI
+  V[["class_b"]] = delta_2 + gamma_gender_b * gender + gamma_urban_b * urbanization + gamma_freq_b * frequency + gamma_edu_b * education + gamma_income_b * income+ gamma_age_b * age + gamma_BMI_b * BMI
+  
+  ### Settings for class allocation models
+  classAlloc_settings = list(
+    classes      = c(class_a=1, class_b=2), 
+    utilities    = V  
+  )
+  
+  lcpars[["pi_values"]] = apollo_classAlloc(classAlloc_settings)
+  
+  return(lcpars)
+}
+```
+
+## GROUP AND VALIDATE INPUTS
+
+```{r Group and Validate Inputs, warning=FALSE, message=FALSE}
+# Group and validate inputs
+apollo_inputs = apollo_validateInputs()
+
+# Define model and likelihood function
+apollo_probabilities=function(apollo_beta, apollo_inputs, functionality="estimate"){
+  
+  ### Attach inputs and detach after function exit
+  apollo_attach(apollo_beta, apollo_inputs)
+  on.exit(apollo_detach(apollo_beta, apollo_inputs))
+  
+  ### Create list of probabilities P
+  P = list()
+  
+  ### Define settings for MNL model component that are generic across classes
+  mnl_settings = list(
+    alternatives = c(alt1=1, alt2=2, alt3=3),
+    avail        = list(alt1=1, alt2=1, alt3=1),
+    choiceVar    = choice
+  )
+  
+  ### Loop over classes
+  for(s in 1:2){
+    
+    ### Compute class-specific utilities
+    V=list()
+    V[["alt1"]]  = asc_1 + beta_arabica[[s]] * alt1_arabica + beta_half[[s]] * alt1_half + beta_normal[[s]] * alt1_normal + beta_fairtrade[[s]] * alt1_fairtrade + beta_organic[[s]] * alt1_organic
+    V[["alt2"]]  = asc_2 + beta_arabica[[s]] * alt2_arabica + beta_half[[s]] * alt2_half + beta_normal[[s]] * alt2_normal + beta_fairtrade[[s]] * alt2_fairtrade + beta_organic[[s]] * alt2_organic
+    V[["alt3"]]  = asc_3 + beta_arabica[[s]] * alt3_arabica + beta_half[[s]] * alt3_half + beta_normal[[s]] * alt3_normal + beta_fairtrade[[s]] * alt3_fairtrade + beta_organic[[s]] * alt3_organic
+    
+    mnl_settings$utilities     = V
+    mnl_settings$componentName = paste0("Class_",s)
+    
+    ### Compute within-class choice probabilities using MNL model
+    P[[paste0("Class_",s)]] = apollo_mnl(mnl_settings, functionality)
+    
+    ### Take product across observation for same individual
+    P[[paste0("Class_",s)]] = apollo_panelProd(P[[paste0("Class_",s)]], apollo_inputs ,functionality)
+    
+  }
+  
+  ### Compute latent class model probabilities
+  lc_settings  = list(inClassProb = P, classProb=pi_values)
+  P[["model"]] = apollo_lc(lc_settings, apollo_inputs, functionality)
+  
+  ### Prepare and return outputs of function
+  P = apollo_prepareProb(P, apollo_inputs, functionality)
+  return(P)
+}
+```
+
+## MODEL ESTIMATION
+
+```{r Model Estimation}
+model = apollo_estimate(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inputs)
+```
+
+## MODEL OUTPUTS
+
+```{r Model Output screen}
+# Formatted output to screen
+apollo_modelOutput(model)
+```
+
+
+```{r message=FALSE, warning=FALSE, results='hide'}
+output <- apollo_modelOutput(model)
+output <- as.data.frame(output)
+```
+
+```{r}
+output <- output %>%
+  mutate(
+    p_value = 2 * (1 - pnorm(abs(`t.rat.(0)`))),
+    Robust_p = 2 * (1 - pnorm(abs(`Rob.t.rat.(0)`)))
+  )
+output <- output %>%
+  mutate(
+    across(c(Estimate, s.e., `t.rat.(0)`, `Rob.s.e.`, `Rob.t.rat.(0)`,
+             p_value, Robust_p), ~round(., 4))
+  )
+
+kable(output, caption = "Estimates of LC Model for 2 classes for Joint Data with covariates ID with p-values")
+```
