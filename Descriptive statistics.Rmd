@@ -1,0 +1,38 @@
+---
+title: "Differences between demographic variables"
+author: "Andika"
+date: "2025-11-02"
+output: html_document
+---
+## Loading libraries
+
+```{r, echo=TRUE, results='hide', warning=FALSE, message=FALSE}
+library(readxl)
+library(dplyr)
+```
+
+```{r Data Loading}
+df <- read_xlsx("ID-DK demographic.xlsx")
+```
+
+```{r Convert order}
+# Convert variables to appropriate types
+df <- df %>%
+  mutate(
+    country = factor(country),
+    gender = factor(gender),
+    education = ordered(education, levels = c("Low", "Medium", "High")),
+    frequency = ordered(frequency, levels = c("Rare", "Weekly", "Daily"))
+  )
+```
+
+```{r}
+library(tableone)
+
+vars <- c("age", "BMI", "education", "gender", "urbanization", "income", "frequency", "l_organic", "l_organic_EU", "l_FT")
+
+catVars <- c("BMI","education", "gender", "urbanization", "income", "frequency", "l_organic", "l_organic_EU", "l_FT")
+
+table1 <- CreateTableOne(vars = vars, strata = "country", data = df, factorVars = catVars, test = TRUE)
+print(table1, showAllLevels = TRUE)
+```

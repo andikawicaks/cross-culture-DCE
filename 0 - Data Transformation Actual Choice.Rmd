@@ -261,6 +261,34 @@ input_Apollo_actual <- merged %>%
   left_join(cleandemo8, by = c("id", "block"))
 ```
 
+# Preparation for Estimated Marginal Mean Analysis
+
+``` {r Preparation for EMM}
+EMM <- merged %>%
+  pivot_longer(
+    cols = starts_with("alt"),                 # all columns beginning with "alt"
+    names_to = c("alt", ".value"),             # split name into alt number and attribute name
+    names_pattern = "alt(\\d+)_(.*)"           # extract "1", "2", "3" and "value", "type", "sugar", "label"
+  ) %>%
+  mutate(alt = as.numeric(alt)) %>%            # make alt numeric
+  select(id, block, SP, RP, alt, type, sugar, label, value)
+
+EMM <- EMM %>%
+  mutate(
+    condition = case_when(
+      SP == 1 ~ "SP",
+      RP == 1 ~ "RP",
+      TRUE ~ NA_character_   # if both are 0 (shouldn't happen, but keeps it safe)
+    )
+  ) %>%
+  select(id, block, condition, alt, type, sugar, label, value)
+
+EMM <- EMM %>%
+  filter(id != 626)
+
+write_csv(EMM,"EMM.csv")
+```
+
 ```{r}
 recode_values_profile <- function (x) {
   recode(x, "robusta" = 1, "arabica" = 2,
