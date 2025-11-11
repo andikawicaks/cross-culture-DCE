@@ -1,0 +1,193 @@
+---
+title: "Estimated marginal means"
+author: "Andika"
+date: "2025-11-03"
+output: html_document
+---
+
+```{r Loading Library, results='hide', warning=FALSE, message=FALSE}}
+library(emmeans)
+library(readr)
+library(readxl)
+library(lmerTest)
+library(dplyr)
+library(ggplot2)
+```
+
+``` {r Loading Data}
+data <- read_csv("EMM.csv")
+```
+``` {r Data Analysis}
+model <- lmer(value ~ condition * type + (1|sugar) + (1|label), data = data)
+
+# Estimated marginal means
+emm1 <- emmeans(model, ~ type | condition)
+print(emm1)
+
+contrast_results1 <- pairs(emm1)
+
+print(contrast_results1)
+```
+
+## Modelling how hedonic ratings are influenced by condition and sugar level and their interaction, while accounting for random variation from type and label
+
+```{r}
+model2 <- lmer(value ~ condition * sugar + (1|type) + (1|label), data = data)
+emm2 <- emmeans(model2, ~ condition | sugar)
+
+print(emm2)
+
+contrast_results2 <- pairs(emm2)
+
+print(contrast_results2)
+``` 
+```{r}
+# Hedonic rating influenced by condition and sustainability label
+model3 <- lmer(value ~ condition * label + (1|type) + (1|sugar), data = data)
+emm3 <- emmeans(model3, ~ label | condition)
+
+print(emm3)
+
+contrast_results3 <- pairs(emm3)
+
+print(contrast_results3)
+```
+``` {r}
+# Calculate mean hedonic score by condition
+joint %>%
+  group_by(condition) %>%
+  summarise(
+    mean_hedonic = mean(hedonic, na.rm = TRUE),
+    sd_hedonic = sd(hedonic, na.rm = TRUE))
+```
+
+``` {r}
+EMM <- read_excel("hedonic_summary.xlsx")
+
+EMM <- EMM %>%
+  mutate(
+    Condition = factor(Condition, levels = c("Expected", "Actual")),
+    Country   = factor(Country, levels = c("Indonesia", "Denmark")),
+    Attribute = factor(Attribute,
+                            levels = c("Coffee type",
+                                       "Sweetness level",
+                                       "Sustainability label")),
+    Level = factor(Level,
+                   levels = c("Arabica", "Robusta",        # Coffee type
+                              "Without", "Half", "Normal",  # Sweetness level
+                              "Fairtrade", "Organic"))      # Sustainability label
+  )
+
+plot <- ggplot(EMM, aes(x = Level, y = Mean, color = Country, 
+                      group = interaction(Country, Condition),
+                      linetype = Condition)) +
+  geom_point(size = 3, position = position_dodge(0.3)) +
+  geom_line(position = position_dodge(0.3), size = 1) +
+  geom_errorbar(
+    aes(ymin = LCL, ymax = UCL),
+    width = 0.2,
+    position = position_dodge(0.3)
+  ) +
+  facet_wrap(~ Attribute, scales = "free_x", nrow = 1) +
+  labs(
+    x = "Attribute Level",
+    y = "Hedonic Rating (Mean ± 95% CI)",
+    color = "Country",
+    linetype = "Condition"
+  ) +
+  scale_color_manual(
+    values = c("Indonesia" = "#E69F00", "Denmark" = "#56B4E9")
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    strip.text = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom",
+    plot.title = element_text(hjust = 0.5, face = "bold")
+  )
+
+ggsave("Hedonic_plot.png", plot, width = 10, height = 6, dpi = 600)
+```
+
+```{r}
+EMM <- read_excel("hedonic_summary.xlsx")
+
+EMM <- EMM %>%
+  mutate(
+    Condition = factor(Condition, levels = c("Expected", "Actual")),
+    Country   = factor(Country, levels = c("Indonesia", "Denmark")),
+    Attribute = factor(Attribute,
+                            levels = c("Coffee type",
+                                       "Sweetness level",
+                                       "Sustainability label")),
+    Level = factor(Level,
+                   levels = c("Arabica", "Robusta",        # Coffee type
+                              "Without", "Half", "Normal",  # Sweetness level
+                              "Fairtrade", "Organic"))      # Sustainability label
+  )
+
+plot <- ggplot(EMM, aes(x = Level, y = Mean, color = Country, 
+                      group = interaction(Country, Condition),
+                      linetype = Condition)) +
+  geom_point(size = 3, position = position_dodge(0.3)) +
+  geom_line(position = position_dodge(0.3), size = 1) +
+  facet_wrap(~ Attribute, scales = "free_x", nrow = 1) +
+  labs(
+    x = "Attribute Level",
+    y = "Hedonic Rating (Mean)",
+    color = "Country",
+    linetype = "Condition"
+  ) +
+  scale_y_continuous(breaks = seq(5, 7, 1)) +
+  coord_cartesian(ylim = c(4.8, 7)) +
+  scale_color_manual(
+    values = c("Indonesia" = "#E69F00", "Denmark" = "#56B4E9")
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    strip.text = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom",
+    plot.title = element_text(hjust = 0.5, face = "bold")
+  )
+
+plot
+
+ggsave("Hedonic_plot_2.png", plot, width = 10, height = 6, dpi = 600)
+```
+
+```{r Joint}
+joint <- read_excel("joint_EMM.xlsx")
+
+model <- lmer(hedonic ~ condition * type * country + (1|sugar) + (1|label), data = joint)
+
+# Estimated marginal means
+emm1 <- emmeans(model, ~ country | condition * type)
+print(emm1)
+
+contrast_results1 <- pairs(emm1)
+
+print(contrast_results1)
+
+model2 <- lmer(hedonic ~ condition * sugar * country + (1|type) + (1|label), data = joint)
+
+# Estimated marginal means
+emm2 <- emmeans(model2, ~ country | condition * sugar)
+print(emm2)
+
+contrast_results1 <- pairs(emm2)
+
+print(contrast_results1)
+
+model3 <- lmer(hedonic ~ condition * label * country + (1|type) + (1|sugar), data = joint)
+
+# Estimated marginal means
+emm3 <- emmeans(model3, ~ country | condition * label)
+print(emm3)
+
+contrast_results1 <- pairs(emm3)
+
+print(contrast_results1)
+```
