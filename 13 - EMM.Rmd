@@ -142,7 +142,7 @@ plot <- ggplot(EMM, aes(x = Level, y = Mean, color = Country,
     plot.title = element_text(hjust = 0.5, face = "bold")
   )
 
-ggsave("Hedonic_plot_rev2.png", plot, width = 10, height = 6, dpi = 600)
+plot
 ```
 
 ```{r}
@@ -150,7 +150,7 @@ EMM <- read_excel("hedonic_summary.xlsx")
 
 EMM <- EMM %>%
   mutate(
-    Condition = factor(Condition, levels = c("Expected", "Actual")),
+    Condition = factor(Condition, levels = c("Expected", "Taste-informed")),
     Country   = factor(Country, levels = c("Indonesia", "Denmark")),
     Attribute = factor(Attribute,
                             levels = c("Coffee type",
@@ -190,7 +190,7 @@ plot <- ggplot(EMM, aes(x = Level, y = Mean, color = Country,
 
 plot
 
-ggsave("Hedonic_plot_rev2.png", plot, width = 10, height = 6, dpi = 600)
+ggsave("Hedonic_plot.png", plot, width = 10, height = 6, dpi = 600)
 ```
 
 ```{r}
