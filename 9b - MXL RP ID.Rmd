@@ -7,13 +7,13 @@ output: html_document
 
 ## Analysis Information
 
-Data: Indonesian consumers sensory data with expectation (SP) and actual liking (RP)
+Data: Indonesian consumers sensory data with expectation (EP) and taste-informed liking (TP)
 
 N: 197
 
 choice sets with 3 choice alternatives, no opt-out
 
-Model: MXL RP ID
+Model: MXL TP ID
 
 ## LOAD LIBRARY AND DEFINE CORE SETTINGS
 
@@ -26,10 +26,9 @@ library(apollo)
 library(tidyr)
 library(dplyr)
 library(knitr)
+library(readxl)
 library(gt)
 
-### Set working directory (only works in RStudio)
-setwd(normalizePath("C:/Users/wzj545/University of Copenhagen/KU/Research/WP4/WP3 - Cross culture coffee DCE/cross-culture-DCE"))
 apollo_setWorkDir()
 
 ### Initialise code
@@ -37,8 +36,8 @@ apollo_initialise()
 
 ### Set core controls
 apollo_control = list(
-  modelName       = "MXL RP ID, uncorrelated lognormals in preference space",
-  modelDescr      = "MXL RP ID, uncorrelated lognormals in preference space",
+  modelName       = "MXL TP ID, uncorrelated lognormals in preference space",
+  modelDescr      = "MXL TP ID, uncorrelated lognormals in preference space",
   indivID         = "id",
   nCores          = 4,
   outputDirectory = "output"
@@ -48,7 +47,7 @@ apollo_control = list(
 ## LOAD DATA AND APPLY ANY TRANSFORMATIONS
 
 ```{r Loading Data}
-database = read.csv("C:/Users/wzj545/University of Copenhagen/KU/Research/WP3/Sensory R/Sensory Coffee Indonesia/input_MNL.csv", header = TRUE)
+database = read_excel("Supplementary Data.xlsx", sheet = "input_MNL", col_names = TRUE)
 
 ### Use only RP data
 database = subset(database,database$RP==1)
@@ -180,5 +179,5 @@ output <- output %>%
              p_value, Robust_p), ~round(., 4))
   )
 
-kable(output, caption = "MXL RP Model (ID) Estimates with p-values")
+kable(output, caption = "MXL TP Model (ID) Estimates with p-values")
 ```
