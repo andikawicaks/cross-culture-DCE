@@ -146,11 +146,11 @@ plot
 ```
 
 ```{r}
-EMM <- read_excel("hedonic_summary.xlsx")
+EMM <- read_excel("Supplementary Data.xlsx", sheet ="hedonic_summary")
 
 EMM <- EMM %>%
   mutate(
-    Condition = factor(Condition, levels = c("Expected", "Taste-informed")),
+    Condition = factor(Condition, levels = c("Expected", "Tasting-informed")),
     Country   = factor(Country, levels = c("Indonesia", "Denmark")),
     Attribute = factor(Attribute,
                             levels = c("Coffee type",
